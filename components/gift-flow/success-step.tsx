@@ -1,10 +1,9 @@
 "use client";
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Gift, Home, ExternalLink } from 'lucide-react';
 import confetti from 'canvas-confetti';
-import { RealTimeOrderStatus } from './real-time-order-status';
 import Link from 'next/link';
 
 // Helper function for confetti effect
@@ -19,22 +18,12 @@ interface SuccessStepProps {
 }
 
 export function SuccessStep({ requestId, onSendAnother, onGoHome }: SuccessStepProps) {
-  const [showConfetti, setShowConfetti] = useState(false);
-  const [orderComplete, setOrderComplete] = useState(false);
-  const [orderStatus, setOrderStatus] = useState<string | null>(null);
+  const [confettiPlayed, setConfettiPlayed] = useState(false);
 
-  // Handle status changes from the real-time updates
-  const handleStatusChange = (status: string, isComplete: boolean) => {
-    setOrderStatus(status);
-    if (isComplete && !orderComplete) {
-      setOrderComplete(true);
-    }
-  };
-
-  useEffect(() => {
-    // Only trigger confetti when order is complete
-    if (orderComplete && !showConfetti) {
-      setShowConfetti(true);
+  // Play confetti effect once
+  useState(() => {
+    if (!confettiPlayed) {
+      setConfettiPlayed(true);
       
       const duration = 3 * 1000;
       const animationEnd = Date.now() + duration;
@@ -62,7 +51,7 @@ export function SuccessStep({ requestId, onSendAnother, onGoHome }: SuccessStepP
         });
       }, 250);
     }
-  }, [orderComplete, showConfetti]);
+  });
 
   return (
     <div className="text-center space-y-8 py-12">
@@ -71,42 +60,34 @@ export function SuccessStep({ requestId, onSendAnother, onGoHome }: SuccessStepP
           <Gift className="w-12 h-12" />
         </div>
         <h1 className="text-3xl font-bold text-gray-900 mb-4">
-          {orderComplete 
-            ? "Gift Successfully Sent! 🎉" 
-            : "Gift Confirmation Received"}
+          Gift Confirmation Received
         </h1>
         <p className="text-gray-600 max-w-lg mx-auto mb-6">
-          {orderComplete 
-            ? "Your anonymous gift is on its way! Thanks for spreading joy and kindness through Anonymous Angel."
-            : "We're processing your gift order. Please wait while we confirm all details."}
+          We're processing your gift order. Please wait while we confirm all details.
         </p>
         
         {requestId && (
-          <>
-            <div className="bg-gray-50 rounded-lg p-4 mb-8 max-w-sm mx-auto">
-              <p className="text-sm text-gray-500 mb-2">Order Reference:</p>
-              <p className="font-mono text-gray-900 font-medium">{requestId}</p>
-              <div className="mt-3">
-                <Link 
-                  href={`/#track-order`} 
-                  className="text-pink-600 hover:text-pink-700 text-sm flex items-center justify-center gap-1"
-                >
-                  <ExternalLink className="w-3.5 h-3.5" /> 
-                  Track order status anytime
-                </Link>
-              </div>
+          <div className="bg-gray-50 rounded-lg p-4 mb-8 max-w-sm mx-auto">
+            <p className="text-sm text-gray-500 mb-2">Order Reference:</p>
+            <p className="font-mono text-gray-900 font-medium">{requestId}</p>
+            <div className="mt-3">
+              <Link 
+                href={`/#track-order`} 
+                className="text-pink-600 hover:text-pink-700 text-sm flex items-center justify-center gap-1"
+              >
+                <ExternalLink className="w-3.5 h-3.5" /> 
+                Track order status anytime
+              </Link>
             </div>
-            
-            {/* Real-time order status component */}
-            <div className="max-w-md mx-auto mb-8">
-              <RealTimeOrderStatus 
-                requestId={requestId} 
-                onStatusChange={handleStatusChange}
-                className="mb-4"
-              />
-            </div>
-          </>
+          </div>
         )}
+        
+        <div className="px-4 py-3 bg-blue-50 rounded-lg text-sm text-blue-700 max-w-md mx-auto mb-6">
+          <p>Processing your order... this may take a few minutes</p>
+          <div className="w-full h-1.5 bg-blue-100 rounded-full mt-2 overflow-hidden">
+            <div className="h-full bg-blue-500 rounded-full w-1/4 animate-pulse"></div>
+          </div>
+        </div>
         
         <div className="flex flex-col sm:flex-row justify-center gap-4 max-w-md mx-auto">
           <Button 
@@ -120,7 +101,6 @@ export function SuccessStep({ requestId, onSendAnother, onGoHome }: SuccessStepP
           <Button 
             onClick={onSendAnother}
             className="bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600 text-white gap-2"
-            disabled={!orderComplete && orderStatus !== 'failed'}
           >
             <Gift className="w-4 h-4" />
             Send Another Gift
