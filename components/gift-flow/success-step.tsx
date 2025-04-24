@@ -2,9 +2,10 @@
 
 import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Gift, Home } from 'lucide-react';
+import { Gift, Home, ExternalLink } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { RealTimeOrderStatus } from './real-time-order-status';
+import Link from 'next/link';
 
 // Helper function for confetti effect
 function randomInRange(min: number, max: number) {
@@ -85,6 +86,15 @@ export function SuccessStep({ requestId, onSendAnother, onGoHome }: SuccessStepP
             <div className="bg-gray-50 rounded-lg p-4 mb-8 max-w-sm mx-auto">
               <p className="text-sm text-gray-500 mb-2">Order Reference:</p>
               <p className="font-mono text-gray-900 font-medium">{requestId}</p>
+              <div className="mt-3">
+                <Link 
+                  href={`/#track-order`} 
+                  className="text-pink-600 hover:text-pink-700 text-sm flex items-center justify-center gap-1"
+                >
+                  <ExternalLink className="w-3.5 h-3.5" /> 
+                  Track order status anytime
+                </Link>
+              </div>
             </div>
             
             {/* Real-time order status component */}

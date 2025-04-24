@@ -1,21 +1,23 @@
 "use client";
 
 import { useEffect } from 'react';
-import { useProducts } from '@/contexts/product-context';
 
 /**
- * This component silently pre-loads products in the background
- * when the homepage is viewed, improving the UX when navigating to the gifts page
+ * This component pre-loads products in the background
  */
 export function ProductPreloader() {
-  const { products, isLoading, refetchProducts } = useProducts();
-
   useEffect(() => {
-    // If products are not already loaded, load them
-    if (products.length === 0 && !isLoading) {
-      refetchProducts();
-    }
-  }, [products.length, isLoading, refetchProducts]);
+    // Preload products by making a background request
+    const preloadProducts = async () => {
+      try {
+        await fetch('/api/products');
+      } catch (err) {
+        // Silently fail
+      }
+    };
+    
+    preloadProducts();
+  }, []);
 
   // This component doesn't render anything
   return null;
