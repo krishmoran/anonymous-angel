@@ -3,10 +3,12 @@ import { Features } from '@/components/features';
 import { HowItWorks } from '@/components/how-it-works';
 import { OrderTracker } from '@/components/order-tracker';
 import { SimpleFooter } from '@/components/simple-footer';
+import { ProductPreloader } from '@/components/product-preloader';
 
 export default function Home() {
   return (
     <main className="min-h-screen bg-gradient-to-b from-white to-rose-50">
+      <ProductPreloader />
       <HeroSection />
       <Features />
       <HowItWorks />

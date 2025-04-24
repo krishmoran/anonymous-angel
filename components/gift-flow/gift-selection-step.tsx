@@ -11,6 +11,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from '@/hooks/use-toast';
 import { Product } from '@/lib/types';
 import { cn } from '@/lib/utils';
+import { useProducts } from '@/contexts/product-context';
 
 interface GiftSelectionStepProps {
   onSelect: (product: Product) => void;
@@ -22,65 +23,16 @@ interface SampleProduct extends Product {
 }
 
 export function GiftSelectionStep({ onSelect }: GiftSelectionStepProps) {
-  const [products, setProducts] = useState<Product[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { products, isLoading, error, isFirstLoad, refetchProducts } = useProducts();
   const [hoveredProduct, setHoveredProduct] = useState<string | null>(null);
   const router = useRouter();
 
+  // If this is the first load and there are no products yet, trigger a fetch
   useEffect(() => {
-    const fetchProducts = async () => {
-      setIsLoading(true);
-      setError(null);
-      
-      try {
-        const response = await fetch('/api/products');
-        
-        if (!response.ok) {
-          throw new Error('Failed to fetch products');
-        }
-        
-        const data = await response.json();
-        
-        if (!data.success || !data.products?.length) {
-          throw new Error(data.message || 'No products available');
-        }
-        
-        // Transform API products to match our Product type
-        const formattedProducts: Product[] = data.products.map((product: any) => ({
-          id: product.id,
-          name: product.name,
-          description: product.description,
-          image: product.image,
-          price: product.price,
-          product_id: product.id,  // Using id as product_id for Zinc API
-          retailer: product.retailer || 'amazon',
-          max_price: product.max_price // Now included in our Product type
-        }));
-        
-        setProducts(formattedProducts);
-      } catch (err) {
-        console.error('Error fetching products:', err);
-        
-        // Set error message
-        setError(err instanceof Error ? err.message : 'Failed to load products');
-        
-        // Fall back to sample products if API fails
-        setProducts(sampleProducts);
-        
-        // Show toast with error
-        toast({
-          title: "Error loading products",
-          description: "Using sample products instead. You can still continue.",
-          variant: "destructive"
-        });
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    
-    fetchProducts();
-  }, []);
+    if (isFirstLoad && products.length === 0) {
+      refetchProducts();
+    }
+  }, [isFirstLoad, products.length, refetchProducts]);
 
   return (
     <div>

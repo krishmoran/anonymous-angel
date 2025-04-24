@@ -50,6 +50,69 @@ export function OrderTracker() {
     }
   };
 
+  // Determine the order status from Zinc API response
+  const getOrderStatus = (orderDetails: any): string => {
+    if (!orderDetails) return 'unknown';
+    
+    // Check for error responses
+    if (orderDetails._type === 'error') {
+      return 'failed';
+    }
+    
+    // Check for specific status from Zinc
+    if (orderDetails.tracking_number) return 'tracking';
+    
+    // Check the status updates
+    if (orderDetails.status_updates && orderDetails.status_updates.length > 0) {
+      const statusTypes = orderDetails.status_updates.map((update: any) => update.type);
+      
+      if (statusTypes.includes('order.delivered')) return 'delivered';
+      if (statusTypes.includes('order.shipped') || statusTypes.includes('tracking.obtained')) return 'shipped';
+      if (statusTypes.includes('order.confirmed')) return 'confirmed';
+      // Check if the request finished with failure
+      if (statusTypes.includes('request.finished')) {
+        const finishedUpdate = orderDetails.status_updates.find((update: any) => update.type === 'request.finished');
+        if (finishedUpdate && finishedUpdate.data && finishedUpdate.data.success === false) {
+          return 'failed';
+        }
+        if (statusTypes.every((type: string) => !type.startsWith('order.'))) {
+          return 'processing';
+        }
+      }
+    }
+    
+    // Check for processing status
+    if (orderDetails.is_processing) return 'processing';
+    
+    // Check for error code
+    if (orderDetails.code) return 'failed';
+    
+    return orderDetails.status || 'unknown';
+  };
+  
+  // Get status message
+  const getStatusMessage = (orderDetails: any): string => {
+    if (!orderDetails) return 'No information available';
+    
+    // Handle error cases
+    if (orderDetails._type === 'error' || orderDetails.code) {
+      return orderDetails.message || 'There was an error with this order';
+    }
+    
+    // Handle processing cases
+    if (orderDetails.is_processing) {
+      return orderDetails.processing_message || 'Your order is being processed';
+    }
+    
+    // Check status updates for messages
+    if (orderDetails.status_updates && orderDetails.status_updates.length > 0) {
+      const latestUpdate = orderDetails.status_updates[orderDetails.status_updates.length - 1];
+      return latestUpdate.message || 'Order status updated';
+    }
+    
+    return 'Order status: ' + getOrderStatus(orderDetails);
+  };
+
   const getStatusIcon = (status: string) => {
     switch (status) {
       case 'success':
@@ -97,6 +160,11 @@ export function OrderTracker() {
       return 'Invalid date';
     }
   };
+  
+  // Convert cents to dollars
+  const centsToUSD = (cents: number) => {
+    return (cents / 100).toFixed(2);
+  };
 
   return (
     <div className="max-w-lg mx-auto">
@@ -128,10 +196,36 @@ export function OrderTracker() {
                 <div className="flex justify-between items-center">
                   <h3 className="font-semibold text-lg">Order Status</h3>
                   <div className={cn("px-3 py-1 rounded-full text-xs", 
-                    getStatusColor(orderDetails.status || (orderDetails.is_processing ? 'processing' : 'unknown')))}>
-                    {orderDetails.is_processing ? 'Processing' : (orderDetails.status || 'Unknown')}
+                    getStatusColor(getOrderStatus(orderDetails)))}>
+                    {getOrderStatus(orderDetails).charAt(0).toUpperCase() + getOrderStatus(orderDetails).slice(1)}
                   </div>
                 </div>
+
+                {getOrderStatus(orderDetails) === 'failed' && (
+                  <div className="p-3 bg-red-50 text-red-800 rounded-md">
+                    <div className="flex gap-2 items-center mb-1">
+                      <XCircle className="h-4 w-4" />
+                      <span className="font-medium">Order Failed</span>
+                    </div>
+                    <p className="text-sm">
+                      {getStatusMessage(orderDetails)}
+                    </p>
+                    {orderDetails.code && (
+                      <p className="text-xs mt-1 text-red-700">Error code: {orderDetails.code}</p>
+                    )}
+                    {orderDetails.data && orderDetails.data.max_price && orderDetails.data.price_components && (
+                      <div className="mt-2 text-sm">
+                        <p>Price exceeded maximum:</p>
+                        <div className="mt-1 grid grid-cols-2 gap-x-4 text-xs">
+                          <span>Maximum allowed:</span>
+                          <span className="font-medium">${centsToUSD(orderDetails.data.max_price)}</span>
+                          <span>Actual price:</span>
+                          <span className="font-medium">${centsToUSD(orderDetails.data.price_components.total)}</span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 {orderDetails.is_processing && (
                   <div className="p-3 bg-amber-50 text-amber-800 rounded-md">
@@ -162,6 +256,18 @@ export function OrderTracker() {
                   </div>
                 )}
 
+                {orderDetails.delivery_dates && orderDetails.delivery_dates.length > 0 && (
+                  <div className="p-3 bg-blue-50 text-blue-800 rounded-md">
+                    <div className="flex gap-2 items-center mb-1">
+                      <Truck className="h-4 w-4" />
+                      <span className="font-medium">Estimated Delivery</span>
+                    </div>
+                    <p className="text-sm">
+                      {orderDetails.delivery_dates[0].delivery_date}
+                    </p>
+                  </div>
+                )}
+
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <p className="text-sm text-gray-500">Retailer</p>
@@ -175,7 +281,28 @@ export function OrderTracker() {
                   </div>
                 </div>
 
-                {orderDetails.products && orderDetails.products.length > 0 && !orderDetails.is_processing && (
+                {orderDetails._checkout_items && orderDetails._checkout_items.length > 0 ? (
+                  <div>
+                    <p className="text-sm text-gray-500 mb-2">Ordered Items</p>
+                    <div className="space-y-3">
+                      {orderDetails._checkout_items.map((item: any, index: number) => (
+                        <div key={index} className="bg-gray-50 p-3 rounded-md">
+                          <p className="font-medium text-sm">{item.title || item.product_id}</p>
+                          <div className="flex justify-between text-sm mt-1">
+                            <span className="text-gray-500">Quantity:</span>
+                            <span>{item.quantity}</span>
+                          </div>
+                          {item.seller_id && (
+                            <div className="flex justify-between text-sm">
+                              <span className="text-gray-500">Seller:</span>
+                              <span>{item.seller_id}</span>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : orderDetails.products && orderDetails.products.length > 0 && !orderDetails.is_processing && (
                   <div>
                     <p className="text-sm text-gray-500 mb-2">Products</p>
                     <ul className="space-y-2">
@@ -194,24 +321,42 @@ export function OrderTracker() {
                     <div className="text-sm">
                       <div className="flex justify-between">
                         <span>Products:</span>
-                        <span>${orderDetails.price_components.products.toFixed(2)}</span>
+                        <span>${orderDetails.price_components.subtotal ? centsToUSD(orderDetails.price_components.subtotal) : '0.00'}</span>
                       </div>
                       <div className="flex justify-between">
                         <span>Shipping:</span>
-                        <span>${orderDetails.price_components.shipping.toFixed(2)}</span>
+                        <span>${orderDetails.price_components.shipping ? centsToUSD(orderDetails.price_components.shipping) : '0.00'}</span>
                       </div>
+                      {orderDetails.price_components.tax && (
+                        <div className="flex justify-between">
+                          <span>Tax:</span>
+                          <span>${centsToUSD(orderDetails.price_components.tax)}</span>
+                        </div>
+                      )}
                       <div className="flex justify-between font-semibold mt-1 pt-1 border-t">
                         <span>Total:</span>
-                        <span>${orderDetails.price_components.total.toFixed(2)}</span>
+                        <span>${orderDetails.price_components.total ? centsToUSD(orderDetails.price_components.total) : '0.00'}</span>
                       </div>
                     </div>
                   </div>
                 )}
 
-                {orderDetails.merchant_order_ids && (
+                {orderDetails.status_updates && orderDetails.status_updates.length > 0 && (
                   <div>
-                    <p className="text-sm text-gray-500 mb-1">Merchant Order IDs</p>
-                    <p className="text-sm font-mono">{orderDetails.merchant_order_ids.join(', ')}</p>
+                    <p className="text-sm text-gray-500 mb-2">Status Updates</p>
+                    <div className="space-y-2">
+                      {orderDetails.status_updates.map((update: any, index: number) => (
+                        <div key={index} className="bg-gray-50 p-2 rounded text-sm">
+                          <div className="flex justify-between">
+                            <span className="font-medium">{update.type}</span>
+                            <span className="text-xs text-gray-500">
+                              {update._created_at ? formatDate(update._created_at) : ''}
+                            </span>
+                          </div>
+                          <p className="text-gray-700">{update.message}</p>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 )}
 
