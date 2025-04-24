@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 
-// Cache configuration - revalidate every 15 minutes (900 seconds)
+// Cache configuration - revalidate every 4h
 export const revalidate = 14400;
 
 // Define product interface for search results
