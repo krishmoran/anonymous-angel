@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -8,26 +8,54 @@ import { Loader2, Package, Truck, CheckCircle, XCircle, Info, Clock } from 'luci
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 
-export function OrderTracker() {
+interface OrderTrackerProps {
+  initialRequestId?: string;
+}
+
+export function OrderTracker({ initialRequestId }: OrderTrackerProps = {}) {
   const [requestId, setRequestId] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [orderDetails, setOrderDetails] = useState<any | null>(null);
   const { toast } = useToast();
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!requestId.trim()) {
-      setError('Please enter an order reference');
+  // Check for request ID in URL hash on mount
+  useEffect(() => {
+    // If initialRequestId is provided, use it
+    if (initialRequestId) {
+      setRequestId(initialRequestId);
+      fetchOrderDetails(initialRequestId);
       return;
     }
+    
+    // Otherwise check URL hash for 'id' parameter
+    if (typeof window !== 'undefined') {
+      // Get the hash part without the #
+      const hashPart = window.location.hash.substring(1);
+      
+      // Check if there's a query part after the hash
+      if (hashPart.includes('?')) {
+        const queryString = hashPart.split('?')[1];
+        const params = new URLSearchParams(queryString);
+        const idFromHash = params.get('id');
+        
+        if (idFromHash) {
+          setRequestId(idFromHash);
+          fetchOrderDetails(idFromHash);
+        }
+      }
+    }
+  }, [initialRequestId]);
 
+  const fetchOrderDetails = async (id: string) => {
+    if (!id.trim()) return;
+    
     setLoading(true);
     setError(null);
     setOrderDetails(null);
 
     try {
-      const response = await fetch(`/api/order-status/${encodeURIComponent(requestId.trim())}`);
+      const response = await fetch(`/api/order-status/${encodeURIComponent(id.trim())}`);
       const data = await response.json();
 
       if (!response.ok || !data.success) {
@@ -48,6 +76,11 @@ export function OrderTracker() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    fetchOrderDetails(requestId);
   };
 
   // Determine the order status from Zinc API response

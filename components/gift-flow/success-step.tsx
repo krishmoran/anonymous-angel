@@ -2,9 +2,11 @@
 
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Gift, Home, ExternalLink } from 'lucide-react';
+import { Gift, Home, ExternalLink, Copy, Check } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { useToast } from '@/hooks/use-toast';
 
 // Helper function for confetti effect
 function randomInRange(min: number, max: number) {
@@ -19,6 +21,9 @@ interface SuccessStepProps {
 
 export function SuccessStep({ requestId, onSendAnother, onGoHome }: SuccessStepProps) {
   const [confettiPlayed, setConfettiPlayed] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const router = useRouter();
+  const { toast } = useToast();
 
   // Play confetti effect once
   useState(() => {
@@ -53,6 +58,32 @@ export function SuccessStep({ requestId, onSendAnother, onGoHome }: SuccessStepP
     }
   });
 
+  // Handle tracking link click with clipboard copy
+  const handleTrackClick = () => {
+    if (requestId) {
+      // Copy order ID to clipboard
+      navigator.clipboard.writeText(requestId)
+        .then(() => {
+          setCopied(true);
+          toast({
+            title: "Order reference copied",
+            description: "For your convenience, it's also in the tracking form"
+          });
+          
+          // Reset copied state after 2 seconds
+          setTimeout(() => setCopied(false), 2000);
+          
+          // Navigate to tracking section with request ID in hash params
+          router.push(`/#track-order?id=${requestId}`);
+        })
+        .catch(err => {
+          console.error('Failed to copy text: ', err);
+          // If copying fails, just navigate
+          router.push(`/#track-order?id=${requestId}`);
+        });
+    }
+  };
+
   return (
     <div className="text-center space-y-8 py-12">
       <div className="mx-auto">
@@ -70,14 +101,33 @@ export function SuccessStep({ requestId, onSendAnother, onGoHome }: SuccessStepP
           <div className="bg-gray-50 rounded-lg p-4 mb-8 max-w-sm mx-auto">
             <p className="text-sm text-gray-500 mb-2">Order Reference:</p>
             <p className="font-mono text-gray-900 font-medium">{requestId}</p>
-            <div className="mt-3">
-              <Link 
-                href={`/#track-order`} 
+            <div className="mt-3 flex justify-center gap-2">
+              <button
+                onClick={handleTrackClick}
                 className="text-pink-600 hover:text-pink-700 text-sm flex items-center justify-center gap-1"
               >
-                <ExternalLink className="w-3.5 h-3.5" /> 
+                {copied ? (
+                  <Check className="w-3.5 h-3.5" />
+                ) : (
+                  <ExternalLink className="w-3.5 h-3.5" />
+                )}
                 Track order status anytime
-              </Link>
+              </button>
+              <button
+                onClick={() => {
+                  navigator.clipboard.writeText(requestId);
+                  setCopied(true);
+                  toast({
+                    title: "Copied!",
+                    description: "Order reference copied to clipboard"
+                  });
+                  setTimeout(() => setCopied(false), 2000);
+                }}
+                className="text-gray-500 hover:text-gray-700"
+                title="Copy to clipboard"
+              >
+                {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+              </button>
             </div>
           </div>
         )}
