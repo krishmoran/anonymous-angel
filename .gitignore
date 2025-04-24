@@ -1,0 +1,13 @@
+.DS_Store
+*.log
+node_modules/
+.env
+*.pyc
+__pycache__/
+.vscode/
+.next/
+dist/
+build/
+coverage/
+developer-notes.md
+@developer-notes.md
