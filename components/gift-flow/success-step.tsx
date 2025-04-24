@@ -39,7 +39,7 @@ export function SuccessStep({ requestId, onSendAnother, onGoHome }: SuccessStepP
       const animationEnd = Date.now() + duration;
       const defaults = { startVelocity: 30, spread: 360, ticks: 60, zIndex: 0 };
 
-      const interval = setInterval(() => {
+      const interval: ReturnType<typeof setInterval> = setInterval(() => {
         const timeLeft = animationEnd - Date.now();
 
         if (timeLeft <= 0) {
