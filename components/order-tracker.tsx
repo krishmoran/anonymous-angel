@@ -42,6 +42,14 @@ export function OrderTracker({ initialRequestId }: OrderTrackerProps = {}) {
         if (idFromHash) {
           setRequestId(idFromHash);
           fetchOrderDetails(idFromHash);
+          
+          // Scroll to the track-order section after a short delay
+          setTimeout(() => {
+            const trackSection = document.getElementById('track-order');
+            if (trackSection) {
+              trackSection.scrollIntoView({ behavior: 'smooth' });
+            }
+          }, 500);
         }
       }
     }
